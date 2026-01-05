@@ -13,5 +13,7 @@ namespace BMS.DataAccessLayer.Models
         public string PhoneNumber { get; set; } = string.Empty;
         public DateTime MembershipDate { get; set; }
         public bool IsActive { get; set; }
+
+        public int? BorrowedBookId { get; set; }
     }
 }

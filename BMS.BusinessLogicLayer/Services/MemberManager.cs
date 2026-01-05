@@ -31,21 +31,36 @@ namespace BMS.BusinessLogicLayer.Services
                 throw new Exception("Bu telefon nömrəsi artıq mövcuddur");
 
             int newId = BMSDataBase.Members.Count == 0
-        ? 1
-        : BMSDataBase.Members.Max(m => m.Id) + 1;
+                ? 1
+                : BMSDataBase.Members.Max(m => m.Id) + 1;
 
             Member member = new()
             {
-                Id = newId,  
+                Id = newId,
                 FullName = dto.FullName,
                 Email = dto.Email,
                 PhoneNumber = dto.PhoneNumber,
-                IsActive = true,
-                MembershipDate = DateTime.Now
+                IsActive = dto.IsActive,   
+                MembershipDate = DateTime.Now,
+                BorrowedBookId = null      
             };
+
+            
+            if (dto.BorrowedBookId.HasValue)
+            {
+                var book = BMSDataBase.Books.FirstOrDefault(b => b.Id == dto.BorrowedBookId.Value);
+                if (book == null)
+                    throw new Exception("Seçilən kitab tapılmadı");
+
+                
+                book.IsAvailable = false;
+                member.IsActive = false;
+                member.BorrowedBookId = book.Id;
+            }
 
             BMSDataBase.Members.Add(member);
         }
+
 
 
 
@@ -138,7 +153,6 @@ namespace BMS.BusinessLogicLayer.Services
             if (member == null)
                 throw new Exception("Üzv tapılmadı");
 
-            // 🔹 Email yoxlaması (yalnız boş deyilsə)
             if (!string.IsNullOrWhiteSpace(memberUpdateDto.Email))
             {
                 if (BMSDataBase.Members.Any(m =>
@@ -151,7 +165,6 @@ namespace BMS.BusinessLogicLayer.Services
                 member.Email = memberUpdateDto.Email.Trim();
             }
 
-            // 🔹 Telefon yoxlaması (yalnız boş deyilsə)
             if (!string.IsNullOrWhiteSpace(memberUpdateDto.PhoneNumber))
             {
                 if (BMSDataBase.Members.Any(m =>
@@ -164,16 +177,28 @@ namespace BMS.BusinessLogicLayer.Services
                 member.PhoneNumber = memberUpdateDto.PhoneNumber.Trim();
             }
 
-            // 🔹 Ad (əgər boş deyilsə)
             if (!string.IsNullOrWhiteSpace(memberUpdateDto.FullName))
                 member.FullName = memberUpdateDto.FullName.Trim();
 
-            // 🔹 Status
-            member.IsActive = memberUpdateDto.IsActive;
+            
+            if (memberUpdateDto.BorrowedBookId.HasValue)
+            {
+                var book = BMSDataBase.Books.FirstOrDefault(b => b.Id == memberUpdateDto.BorrowedBookId.Value);
+                if (book == null)
+                    throw new Exception("Seçilən kitab tapılmadı");
 
-            // 🔹 Tarix dəyişmir (çox vacib!)
-            // member.MembershipDate = member.MembershipDate;
+                
+                book.IsAvailable = false;
+                member.IsActive = false;
+                member.BorrowedBookId = book.Id;
+            }
+            else
+            {
+                
+                member.IsActive = memberUpdateDto.IsActive;
+            }
         }
+
 
     }
 }

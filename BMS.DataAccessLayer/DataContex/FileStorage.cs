@@ -137,23 +137,25 @@ namespace BMS.DataAccessLayer.DataContex
             return categories;
         }
 
-      
+
 
         public static void SaveMembers(string fileName, List<Member> members)
         {
-            string path = GetPath(fileName);  
+            string path = GetPath(fileName);
 
             using StreamWriter sw = new(path, false, Encoding.UTF8);
 
             foreach (var m in members)
             {
+                string borrowedBookStr = m.BorrowedBookId.HasValue ? m.BorrowedBookId.Value.ToString("D5") : "".PadRight(5);
                 string line =
                     m.Id.ToString("D5") + "|" +
                     m.FullName.PadRight(30).Substring(0, 30) + "|" +
                     m.Email.PadRight(30).Substring(0, 30) + "|" +
                     m.PhoneNumber.PadRight(15).Substring(0, 15) + "|" +
                     (m.IsActive ? "Active" : "Not Active").PadRight(11) + "|" +
-                    m.MembershipDate.Year.ToString("D4");
+                    m.MembershipDate.Year.ToString("D4") + "|" +
+                    borrowedBookStr;
 
                 sw.WriteLine(line);
             }
@@ -172,9 +174,12 @@ namespace BMS.DataAccessLayer.DataContex
                 try
                 {
                     string[] parts = line.Split('|');
-
-                    if (parts.Length != 6)
+                    if (parts.Length != 7)
                         continue;
+
+                    int? borrowedId = null;
+                    if (int.TryParse(parts[6].Trim(), out var parsed))
+                        borrowedId = parsed;
 
                     members.Add(new Member
                     {
@@ -183,16 +188,18 @@ namespace BMS.DataAccessLayer.DataContex
                         Email = parts[2].Trim(),
                         PhoneNumber = parts[3].Trim(),
                         IsActive = parts[4].Trim() == "Active",
-                        MembershipDate = new DateTime(int.Parse(parts[5].Trim()), 1, 1)
+                        MembershipDate = new DateTime(int.Parse(parts[5].Trim()), 1, 1),
+                        BorrowedBookId = borrowedId
                     });
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error: {ex.Message}");
+                    Console.WriteLine($"Ошибка: {ex.Message}");
                 }
             }
 
             return members;
         }
+
     }
 }

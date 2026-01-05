@@ -14,6 +14,8 @@ namespace BMS.BusinessLogicLayer.Dtos
         public string? PhoneNumber { get; set; }
         public bool IsActive { get; set; }
         public DateTime MembershipDate { get; set; }
+
+        public int? BorrowedBookId { get; set; }
     }
 
     public class MemberCreateDto
@@ -23,6 +25,8 @@ namespace BMS.BusinessLogicLayer.Dtos
         public required string PhoneNumber { get; set; }
         public bool IsActive { get; set; }
         public DateTime MembershipDate { get; set; } = DateTime.Now;
+
+        public int? BorrowedBookId { get; set; }
     }
 
     public class MemberUpdateDto
@@ -33,6 +37,8 @@ namespace BMS.BusinessLogicLayer.Dtos
         public string PhoneNumber { get; set; } = string.Empty;  
         public bool IsActive { get; set; }
         public DateTime MembershipDate { get; set; }
+
+        public int? BorrowedBookId { get; set; }
     }
 
     public class MemberDeleteDto

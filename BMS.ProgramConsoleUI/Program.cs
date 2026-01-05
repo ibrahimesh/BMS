@@ -2,6 +2,7 @@
 using BMS.BusinessLogicLayer.Services;
 using BMS.DataAccessLayer.DataContex;
 using BMS.DataAccessLayer.Models;
+using BMS.ProgramConsoleUI;
 using System;
 using System.IO;
 using System.Linq;
@@ -92,9 +93,10 @@ namespace BMS.ConsoleUI
 
                 string title = InputText("Adı: ");
                 string author = InputString("Müəllif: ");
-                int year = InputInt("Nəşr ili: "); 
+                int year = InputInt("Nəşr ili: ");
+                if (year < 0 || year > DateTime.Now.Year)
+                    throw new Exception("Nəşr ili düzgün deyil!");
 
-                
                 Console.WriteLine("\n📂 Mövcud kateqoriyalar:");
                 var categories = categoryManager.GetAllCategories();
 
@@ -116,20 +118,24 @@ namespace BMS.ConsoleUI
                 if (string.IsNullOrWhiteSpace(categoryName))
                     categoryName = "Ümumi";
 
-              
                 int categoryId = categoryManager.GetOrCreateCategory(categoryName);
+
+               
+                string isbn = Validators.GenerateISBN();
 
                 bookManager.CreateBook(new BookCreateDto
                 {
                     Title = title,
                     Author = author,
-                    ISBN = Random.Shared.Next(1000000000, 1999999999).ToString(),
-                    PublishedDate = year,  
-                    CategoryId = categoryId,  
+                    ISBN = isbn,  
+                    PublishedDate = year,
+                    CategoryId = categoryId,
                     IsAvailable = true
                 });
 
-                ConsoleHelper.Success($"Kitab əlavə edildi (Kateqoriya: {categoryName})");
+                ConsoleHelper.Success($"Kitab əlavə edildi");
+                Console.WriteLine($"📖 ISBN: {isbn}");
+                Console.WriteLine($"📂 Kateqoriya: {categoryName}");
                 SaveBooksToTxt();
             }
             catch (Exception ex)
@@ -145,51 +151,77 @@ namespace BMS.ConsoleUI
             var books = bookManager.GetAllBooks();
 
             if (!books.Any())
+            {
                 ConsoleHelper.Error("Kitablar siyahısı boşdur!");
+            }
             else
             {
+                Console.WriteLine($"\n{"ID",-5} {"Kitab Adı",-35} {"Müəllif",-25} {"ISBN",-20} {"Kateqoriya",-20} {"Status",-12}");
+                Console.WriteLine(new string('─', 120));
+
                 foreach (var b in books)
                 {
                     var category = categoryManager.GetCategoryById(b.CategoryId);
                     string categoryName = category?.Name ?? "N/A";
-                    string status = b.IsAvailable ? "Mövcuddur" : "Verilib";
+                    string status = b.IsAvailable ? "✓ Mövcud" : "✗ Verilib";
+                    string isbn = Validators.FormatISBN(b.ISBN ?? "");
 
                     Console.WriteLine(
-                        $"{b.Id}. {(b.Title ?? "N/A").PadRight(30)} " +
-                        $"{(b.Author ?? "N/A").PadRight(20)} " +
-                        $"({b.PublishedDate}) " +
-                        $"[{categoryName}] " +
-                        $"[{status}]"
+                        $"{b.Id,-5} " +
+                        $"{(b.Title ?? "N/A").Substring(0, Math.Min(34, b.Title?.Length ?? 0)),-35} " +
+                        $"{(b.Author ?? "N/A").Substring(0, Math.Min(24, b.Author?.Length ?? 0)),-25} " +
+                        $"{isbn,-20} " +
+                        $"{categoryName.Substring(0, Math.Min(19, categoryName.Length)),-20} " +
+                        $"{status,-12}"
+                    );
+                }
+
+                Console.WriteLine($"\n📊 Cəmi: {books.Count} kitab");
+            }
+
+            ConsoleHelper.Pause();
+        }
+
+        static void SearchBooksUI()
+        {
+            ConsoleHelper.Header("Kitab Axtarışı");
+
+            Console.WriteLine("🔍 Axtarış parametrləri (boş buraxsanız, hamısı göstəriləcək):");
+            string title = InputText("Kitab adı: ", true);
+            string author = InputString("Müəllif: ", true);
+
+            var allBooks = bookManager.GetAllBooks();
+
+            
+            var results = allBooks.Where(b =>
+                (string.IsNullOrEmpty(title) || Validators.ContainsIgnoreCase(b.Title ?? "", title)) &&
+                (string.IsNullOrEmpty(author) || Validators.ContainsIgnoreCase(b.Author ?? "", author))
+            ).ToList();
+
+            if (!results.Any())
+            {
+                ConsoleHelper.Error("Nəticə tapılmadı!");
+            }
+            else
+            {
+                Console.WriteLine($"\n✓ {results.Count} nəticə tapıldı:\n");
+                Console.WriteLine($"{"ID",-5} {"Kitab Adı",-35} {"Müəllif",-25} {"ISBN",-20}");
+                Console.WriteLine(new string('─', 90));
+
+                foreach (var b in results)
+                {
+                    Console.WriteLine(
+                        $"{b.Id,-5} " +
+                        $"{(b.Title ?? "N/A").Substring(0, Math.Min(34, b.Title?.Length ?? 0)),-35} " +
+                        $"{(b.Author ?? "N/A").Substring(0, Math.Min(24, b.Author?.Length ?? 0)),-25} " +
+                        $"{Validators.FormatISBN(b.ISBN ?? ""),-20}"
                     );
                 }
             }
 
             ConsoleHelper.Pause();
         }
-        static void SearchBooksUI()
-        {
-            ConsoleHelper.Header("Kitab Axtarışı");
-            string title = InputText("Kitab adı (boş ola bilər): ", true);  
-            string author = InputString("Müəllif (boş ola bilər): ", true);
 
-            var results = bookManager.SearchBooks(new BookSearchDto
-            {
-                Title = title,
-                Author = author
-            });
-
-            if (!results.Any())
-                ConsoleHelper.Error("Nəticə tapılmadı!");
-            else
-            {
-                foreach (var b in results)
-                    Console.WriteLine(
-                        $"{b.Id}. {(b.Title ?? "N/A").PadRight(30)} {(b.Author ?? "N/A").PadRight(25)} ({b.PublishedDate})"
-                    );
-            }
-
-            ConsoleHelper.Pause();
-        }
         static void UpdateBookUI()
         {
             try
@@ -535,16 +567,28 @@ namespace BMS.ConsoleUI
             var members = memberManager.GetAllMembers();
 
             if (!members.Any())
+            {
                 ConsoleHelper.Error("Üzvlər siyahısı boşdur!");
+            }
             else
             {
+                Console.WriteLine($"\n{"ID",-5} {"Ad, Soyad",-30} {"Email",-35} {"Telefon",-20} {"Status",-10}");
+                Console.WriteLine(new string('─', 105));
+
                 foreach (var m in members)
                 {
-                    string status = m.IsActive ? "Aktiv" : "Passiv";
+                    string status = m.IsActive ? "✓ Aktiv" : "✗ Passiv";
+
                     Console.WriteLine(
-                        $"{m.Id}. {(m.FullName ?? "N/A").PadRight(25)} {(m.Email ?? "N/A").PadRight(30)} {status}"
+                        $"{m.Id,-5} " +
+                        $"{(m.FullName ?? "N/A").Substring(0, Math.Min(29, m.FullName?.Length ?? 0)),-30} " +
+                        $"{(m.Email ?? "N/A").Substring(0, Math.Min(34, m.Email?.Length ?? 0)),-35} " +
+                        $"{(m.PhoneNumber ?? "N/A"),-20} " +
+                        $"{status,-10}"
                     );
                 }
+
+                Console.WriteLine($"\n📊 Cəmi: {members.Count} üzv");
             }
 
             ConsoleHelper.Pause();
@@ -553,21 +597,38 @@ namespace BMS.ConsoleUI
         static void SearchMembersUI()
         {
             ConsoleHelper.Header("Üzv Axtarışı");
-            string name = InputString("Ad, Soyad (boş ola bilər): ", true);  
-            string email = InputString("Email (boş ola bilər): ", true);     
 
-            var results = memberManager.SearchMembers(new MemberSearchDto
-            {
-                FullName = name ?? "",   
-                Email = email ?? ""      
-            });
+            Console.WriteLine("🔍 Axtarış parametrləri (boş buraxsanız, hamısı göstəriləcək):");
+            string name = InputString("Ad, Soyad: ", true);
+            string email = InputString("Email: ", true);
+
+            var allMembers = memberManager.GetAllMembers();
+
+          
+            var results = allMembers.Where(m =>
+                (string.IsNullOrEmpty(name) || Validators.ContainsIgnoreCase(m.FullName ?? "", name)) &&
+                (string.IsNullOrEmpty(email) || Validators.ContainsIgnoreCase(m.Email ?? "", email))
+            ).ToList();
 
             if (!results.Any())
+            {
                 ConsoleHelper.Error("Nəticə tapılmadı!");
+            }
             else
             {
+                Console.WriteLine($"\n✓ {results.Count} nəticə tapıldı:\n");
+                Console.WriteLine($"{"ID",-5} {"Ad, Soyad",-30} {"Email",-35} {"Telefon",-20}");
+                Console.WriteLine(new string('─', 95));
+
                 foreach (var m in results)
-                    Console.WriteLine($"{m.Id}. {(m.FullName ?? "N/A").PadRight(30)}   {(m.Email ?? "N/A").PadRight(30)} {m.PhoneNumber}");
+                {
+                    Console.WriteLine(
+                        $"{m.Id,-5} " +
+                        $"{(m.FullName ?? "N/A"),-30} " +
+                        $"{(m.Email ?? "N/A"),-35} " +
+                        $"{(m.PhoneNumber ?? "N/A"),-20}"
+                    );
+                }
             }
 
             ConsoleHelper.Pause();
@@ -698,9 +759,21 @@ namespace BMS.ConsoleUI
             {
                 Console.Write(prompt);
                 string? val = Console.ReadLine();
-                if (allowEmpty && string.IsNullOrEmpty(val)) return "";
-                if (val != null && val.Contains("@") && val.Contains(".")) return val;
-                ConsoleHelper.Error("Email düzgün deyil!");
+
+                if (allowEmpty && string.IsNullOrEmpty(val))
+                    return "";
+
+                if (string.IsNullOrWhiteSpace(val))
+                {
+                    ConsoleHelper.Error("Email boş ola bilməz!");
+                    continue;
+                }
+
+                if (Validators.IsValidEmail(val))
+                    return val.Trim().ToLower();
+
+                ConsoleHelper.Error("Email düzgün deyil! Nümunə: user@example.com");
+                Console.WriteLine("📧 Düzgün format: username@domain.com");
             }
         }
 
@@ -710,9 +783,26 @@ namespace BMS.ConsoleUI
             {
                 Console.Write(prompt);
                 string? val = Console.ReadLine();
-                if (allowEmpty && string.IsNullOrEmpty(val)) return "";
-                if (val != null && val.All(c => char.IsDigit(c) || c == '+' || c == '-' || c == ' ')) return val;
-                ConsoleHelper.Error("Telefon düzgün deyil!");
+
+                if (allowEmpty && string.IsNullOrEmpty(val))
+                    return "";
+
+                if (string.IsNullOrWhiteSpace(val))
+                {
+                    ConsoleHelper.Error("Telefon boş ola bilməz!");
+                    continue;
+                }
+
+                if (Validators.IsValidAzerbaijaniPhone(val))
+                {
+                    return Validators.FormatPhone(val);
+                }
+
+                ConsoleHelper.Error("Telefon nömrəsi düzgün deyil!");
+                Console.WriteLine("📱 Düzgün formatlar:");
+                Console.WriteLine("   +994501234567  (mütləq +994 ilə başlamalı)");
+                Console.WriteLine("   0501234567     (və ya 0 ilə başlamalı)");
+                Console.WriteLine("🔢 Operatorlar: 50, 51, 55, 70, 77, 99");
             }
         }
 

@@ -14,5 +14,7 @@ namespace BMS.DataAccessLayer.Models
         public DateTime PublishedDate { get; set; }
         public int CategoryId { get; set; }
         public bool IsAvailable { get; set; }
+
+        
     }
 }
