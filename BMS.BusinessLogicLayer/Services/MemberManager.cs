@@ -40,26 +40,31 @@ namespace BMS.BusinessLogicLayer.Services
                 FullName = dto.FullName,
                 Email = dto.Email,
                 PhoneNumber = dto.PhoneNumber,
-                IsActive = dto.IsActive,   
-                MembershipDate = DateTime.Now,
-                BorrowedBookId = null      
+                IsActive = dto.IsActive,
+                MembershipDate = DateTime.Now
+                
             };
 
             
             if (dto.BorrowedBookId.HasValue)
             {
-                var book = BMSDataBase.Books.FirstOrDefault(b => b.Id == dto.BorrowedBookId.Value);
+                var book = BMSDataBase.Books
+                    .FirstOrDefault(b => b.Id == dto.BorrowedBookId.Value);
+
                 if (book == null)
                     throw new Exception("Seçilən kitab tapılmadı");
 
-                
-                book.IsAvailable = false;
+                if (!book.IsAvailable)
+                    throw new Exception("Kitab artıq götürülüb");
+
+                book.IsAvailable = false;   
                 member.IsActive = false;
                 member.BorrowedBookId = book.Id;
             }
 
             BMSDataBase.Members.Add(member);
         }
+
 
 
 
@@ -198,6 +203,82 @@ namespace BMS.BusinessLogicLayer.Services
                 member.IsActive = memberUpdateDto.IsActive;
             }
         }
+       
+
+
+
+    
+        
+        
+            public List<MemberDto> GetAllMembersWithBooks()
+            {
+                return BMSDataBase.Members.Select(m => new MemberDto
+                {
+                    Id = m.Id,
+                    FullName = m.FullName,
+                    Email = m.Email,
+                    PhoneNumber = m.PhoneNumber,
+                    IsActive = m.IsActive,
+                    MembershipDate = m.MembershipDate,
+                    BorrowedBookId = m.BorrowedBookId,
+                  
+                    BookTitle = m.BorrowedBookId.HasValue
+                        ? BMSDataBase.Books.FirstOrDefault(b => b.Id == m.BorrowedBookId)?.Title
+                        : "Kitab seçilməyib"
+                }).ToList();
+            }
+
+
+
+        private static string Normalize(string? s)
+        {
+            if (string.IsNullOrWhiteSpace(s)) return string.Empty;
+            return s.Trim().ToLowerInvariant();
+        }
+
+        public List<BookDto> SearchBooksFuzzy(string query)
+        {
+            string q = Normalize(query);
+            return BMSDataBase.Books
+                .Where(b =>
+                    Normalize(b.Title).Contains(q) ||
+                    Normalize(b.Author).Contains(q) ||
+                    Normalize(b.ISBN).Contains(q))
+                .Select(b => new BookDto
+                {
+                    Id = b.Id,
+                    Title = b.Title,
+                    Author = b.Author,
+                    PublishedDate = b.PublishedDate.Year,
+                    ISBN = b.ISBN,
+                    CategoryId = b.CategoryId,
+                    IsAvailable = b.IsAvailable
+                })
+                .ToList();
+        }
+
+        public void ShowAuthorsWithBookCount()
+        {
+            var authors = BMSDataBase.Books
+                .GroupBy(b => b.Author)
+                .Select(g => new { Author = g.Key, Count = g.Count() })
+                .ToList();
+
+            foreach (var a in authors)
+            {
+                Console.WriteLine($"Müəllif: {a.Author}, Kitab sayı: {a.Count}");
+            }
+        }
+
+        public void ShowAllBooks()
+        {
+            Console.WriteLine("📚 Bütün kitabların siyahısı:");
+            foreach (var b in BMSDataBase.Books)
+            {
+                Console.WriteLine($"{b.Id} - {b.Title} | {b.Author} | ISBN: {b.ISBN}");
+            }
+        }
+
 
 
     }

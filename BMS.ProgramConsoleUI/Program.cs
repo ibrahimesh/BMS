@@ -69,6 +69,7 @@ namespace BMS.ConsoleUI
             ConsoleHelper.MenuItem("3", "Kitab axtar");
             ConsoleHelper.MenuItem("4", "Kitab güncəllə");
             ConsoleHelper.MenuItem("5", "Kitab sil");
+            ConsoleHelper.MenuItem("6", "Müəllif üzrə axtarış");
             ConsoleHelper.MenuItem("0", "Geri");
             Console.Write("Seçim: ");
             string? choice = Console.ReadLine();
@@ -80,6 +81,7 @@ namespace BMS.ConsoleUI
                 case "3": SearchBooksUI(); break;
                 case "4": UpdateBookUI(); break;
                 case "5": DeleteBookUI(); break;
+                case "6": SearchAuthorUI(); break;
                 case "0": break;
                 default: ConsoleHelper.Error("Yanlış seçim"); ConsoleHelper.Pause(); break;
             }
@@ -227,6 +229,7 @@ namespace BMS.ConsoleUI
             try
             {
                 ConsoleHelper.Header("Kitab Güncəllə");
+                ShowBooks();  
                 int id = InputInt("Güncəllənəcək kitabın ID-si: ");
                 var book = bookManager.GetBookById(id);
 
@@ -277,6 +280,7 @@ namespace BMS.ConsoleUI
             try
             {
                 ConsoleHelper.Header("Kitab Sil");
+                ShowBooks();   
                 int id = InputInt("Silinəcək kitabın ID-si: ");
                 var book = bookManager.GetBookById(id);
 
@@ -516,6 +520,7 @@ namespace BMS.ConsoleUI
             ConsoleHelper.MenuItem("3", "Üzv axtar");
             ConsoleHelper.MenuItem("4", "Üzv güncəllə");
             ConsoleHelper.MenuItem("5", "Üzv sil");
+            ConsoleHelper.MenuItem("6", "Üzv + seçdiyi kitab");
             ConsoleHelper.MenuItem("0", "Geri");
             Console.Write("Seçim: ");
             string? choice = Console.ReadLine();
@@ -527,6 +532,7 @@ namespace BMS.ConsoleUI
                 case "3": SearchMembersUI(); break;
                 case "4": UpdateMemberUI(); break;
                 case "5": DeleteMemberUI(); break;
+                case "6": ShowMembersWithBooks(); break;
                 case "0": break;
                 default: ConsoleHelper.Error("Yanlış seçim"); ConsoleHelper.Pause(); break;
             }
@@ -541,6 +547,17 @@ namespace BMS.ConsoleUI
                 string name = InputString("Ad, Soyad: ");
                 string email = InputEmail("Email: ");
                 string phone = InputPhone("Telefon: ");
+                Console.Write("\nKitab seçmək istəyirsiniz? (y/n): ");
+                string? choose = Console.ReadLine();
+
+                int? selectedBookId = null;
+
+                if (choose?.ToLower() == "y")
+                {
+                    ShowAvailableBooksForMember();
+                    selectedBookId = InputInt("Kitab ID: ");
+                }
+
 
                 memberManager.CreateMember(new MemberCreateDto
                 {
@@ -548,7 +565,11 @@ namespace BMS.ConsoleUI
                     FullName = name,
                     Email = email,
                     PhoneNumber = phone,
-                    IsActive = true
+                    IsActive = true,
+                    BorrowedBookId = selectedBookId,
+                    MembershipDate = DateTime.Now
+
+
                 });
 
                 ConsoleHelper.Success("Üzv əlavə edildi");
@@ -639,6 +660,7 @@ namespace BMS.ConsoleUI
             try
             {
                 ConsoleHelper.Header("Üzv Güncəllə");
+                ShowMembers();
                 int id = InputInt("Güncəllənəcək üzv ID-si: ");
                 var member = memberManager.GetMemberById(id);
 
@@ -652,7 +674,17 @@ namespace BMS.ConsoleUI
                 string name = InputString($"Ad, Soyad ({member.FullName}): ", true);
                 string email = InputEmail($"Email ({member.Email}): ", true);
                 string phone = InputPhone($"Telefon ({member.PhoneNumber}): ", true);
-                Console.Write("Aktiv olsun? (1 - Bəli, 0 - Xeyr): ");
+                Console.Write("\nYeni kitab seçilsin? (y/n): ");
+                string? chooseBook = Console.ReadLine();
+
+                int? newBookId = null;
+
+                if (chooseBook?.ToLower() == "y")
+                {
+                    ShowAvailableBooksForMember();
+                    newBookId = InputInt("Yeni kitab ID: ");
+                }
+
                 bool isActive = Console.ReadLine() == "1";
 
                 memberManager.UpdateMember(new MemberUpdateDto
@@ -662,7 +694,8 @@ namespace BMS.ConsoleUI
                     Email = string.IsNullOrWhiteSpace(email) ? (member.Email ?? string.Empty) : email,  
                     PhoneNumber = string.IsNullOrWhiteSpace(phone) ? (member.PhoneNumber ?? string.Empty) : phone,  
                     IsActive = isActive,
-                    MembershipDate = member.MembershipDate
+                    MembershipDate = member.MembershipDate,
+                    BorrowedBookId = newBookId
                 });
 
                 ConsoleHelper.Success("Üzv güncəlləndi");
@@ -680,6 +713,7 @@ namespace BMS.ConsoleUI
             try
             {
                 ConsoleHelper.Header("Üzv Sil");
+                ShowMembers();
                 int id = InputInt("Silinəcək üzv ID-si: ");
                 memberManager.DeleteMember(id);
                 ConsoleHelper.Success("Üzv silindi");
@@ -691,6 +725,22 @@ namespace BMS.ConsoleUI
             }
             ConsoleHelper.Pause();
         }
+        static void ShowMembersWithBooks()
+        {
+            ConsoleHelper.Header("Üzvlər və seçilən kitablar");
+
+            var members = memberManager.GetAllMembersWithBooks();
+
+            foreach (var m in members)
+            {
+                Console.WriteLine(
+                    $"{m.Id}. {m.FullName} → {m.BookTitle}"
+                );
+            }
+
+            ConsoleHelper.Pause();
+        }
+
         #endregion
 
         #region Helpers
@@ -824,6 +874,63 @@ namespace BMS.ConsoleUI
         static void SaveCategoriesToTxt() => FileStorage.SaveCategories("Categories.txt", BMSDataBase.Categories);
         static void SaveMembersToTxt() => FileStorage.SaveMembers("Members.txt", BMSDataBase.Members);
         #endregion
+
+
+        static void SearchAuthorUI()
+        {
+            ConsoleHelper.Header("Müəllif üzrə axtarış");
+
+            Console.Write("Müəllif (1 hərf də olar): ");
+            string key = Console.ReadLine() ?? "";
+
+            var info = bookManager.GetAuthorInfo(key);
+
+            if (!info.Books.Any())
+            {
+                ConsoleHelper.Error("Nəticə tapılmadı!");
+                ConsoleHelper.Pause();
+                return;
+            }
+
+            Console.WriteLine($"\n👤 Müəllif: {key}");
+            Console.WriteLine($"📚 Kitab sayı: {info.BookCount}");
+            Console.WriteLine($"📂 Janr sayı: {info.CategoryCount}");
+            Console.WriteLine(new string('─', 80));
+            Console.WriteLine("\n📂 Kateqoriyalar:");
+            foreach (var c in info.Categories)
+            {
+                Console.WriteLine($" - {c}");
+            }
+
+
+            foreach (var b in info.Books)
+            {
+                Console.WriteLine($"{b.Id}. {b.Title} ({b.PublishedDate})");
+            }
+
+            ConsoleHelper.Pause();
+        }
+
+        static void ShowAvailableBooksForMember()
+        {
+            Console.WriteLine("\n📚 Mövcud kitablar:");
+
+            var books = bookManager.GetAvailableBooks();
+
+            if (!books.Any())
+            {
+                ConsoleHelper.Error("Hazırda mövcud kitab yoxdur!");
+                return;
+            }
+
+            foreach (var b in books)
+            {
+                Console.WriteLine($"{b.Id}. {b.Title} - {b.Author}");
+            }
+        }
+
+
     }
+
 }
 

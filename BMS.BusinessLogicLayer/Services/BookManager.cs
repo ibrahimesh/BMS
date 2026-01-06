@@ -10,6 +10,16 @@ using System.Threading.Tasks;
 
 namespace BMS.BusinessLogicLayer.Services
 {
+    public class BookAuthorInfoDto
+    {
+        public string Author { get; set; } = "";
+        public int BookCount { get; set; }
+        public int CategoryCount { get; set; }
+        public List<BookDto> Books { get; set; } = new();
+        public List<string> Categories { get; set; } = new();
+
+    }
+
     public class BookManager : IBookService
     {
         public void CreateBook(BookCreateDto dto)
@@ -55,12 +65,18 @@ namespace BMS.BusinessLogicLayer.Services
             if (book != null)
             {
                 BMSDataBase.Books.Remove(book);
+                Console.WriteLine($"Silindi: {book.Title} ({book.Author})");
+                GetAllBooks();
             }
             else
             {
-                throw new Exception("Book not found");
+                throw new Exception("Kitab tapılmadı");
             }
         }
+
+        
+       
+
 
         public List<BookDto> GetAllBooks()
         {
@@ -91,8 +107,10 @@ namespace BMS.BusinessLogicLayer.Services
                     IsAvailable = b.IsAvailable
                 }).ToList();
         }
+        
 
-     
+
+
 
         public BookDto GetBookById(int id)
         {
@@ -146,6 +164,30 @@ namespace BMS.BusinessLogicLayer.Services
             }).ToList();
 
         }
+        public List<BookDto> SearchBooksByAuthor(string authorKeyword)
+        {
+            var books = BMSDataBase.Books
+                .Where(b => !string.IsNullOrEmpty(b.Author) &&
+                            b.Author.Contains(authorKeyword, StringComparison.OrdinalIgnoreCase))
+                .Select(b => new BookDto
+                {
+                    Id = b.Id,
+                    Title = b.Title,
+                    Author = b.Author,
+                    PublishedDate = b.PublishedDate.Year,
+                    ISBN = b.ISBN,
+                    CategoryId = b.CategoryId,
+                    IsAvailable = b.IsAvailable
+                }).ToList();
+
+
+            int bookCount = books.Count;
+            int categoryCount = books.Select(b => b.CategoryId).Distinct().Count();
+
+            Console.WriteLine($"Müəllif: {authorKeyword}, Kitab sayı: {bookCount}, Janr sayı: {categoryCount}");
+
+            return books;
+        }
 
         public void UpdateBook(BookUpdateDto dto)
         {
@@ -176,6 +218,40 @@ namespace BMS.BusinessLogicLayer.Services
             return Random.Shared.Next(1000000000, 1999999999).ToString() +
                    Random.Shared.Next(1000, 9999).ToString(); 
         }
+
+        public BookAuthorInfoDto GetAuthorInfo(string keyword)
+        {
+
+            var books = BMSDataBase.Books
+                .Where(b => b.Author.Contains(keyword, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            var categoryNames = books
+    .Select(b => BMSDataBase.Categories
+        .FirstOrDefault(c => c.Id == b.CategoryId)?.Name)
+    .Where(name => name != null)
+    .Distinct()
+    .ToList();
+
+
+            return new BookAuthorInfoDto
+            {
+                Author = keyword,
+                BookCount = books.Count,
+                CategoryCount = books.Select(b => b.CategoryId).Distinct().Count(),
+                Categories = categoryNames!,
+                Books = books.Select(b => new BookDto
+                {
+                    Id = b.Id,
+                    Title = b.Title,
+                    Author = b.Author,
+                    PublishedDate = b.PublishedDate.Year,
+                    ISBN = b.ISBN,
+                    CategoryId = b.CategoryId,
+                    IsAvailable = b.IsAvailable
+                }).ToList()
+            };
+        }
+
 
 
 

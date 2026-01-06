@@ -16,9 +16,14 @@ namespace BMS.BusinessLogicLayer.Dtos
         public DateTime MembershipDate { get; set; }
 
         public int? BorrowedBookId { get; set; }
+
+       public string? BookTitle { get; set; }
+        
     }
 
-    public class MemberCreateDto
+
+
+public class MemberCreateDto
     {
         public required string FullName { get; set; }
         public required string Email { get; set; }
