@@ -89,63 +89,78 @@ namespace BMS.ConsoleUI
 
         static void CreateBookUI()
         {
-            try
+            while (true)
             {
-                ConsoleHelper.Header("Yeni Kitab");
-
-                string title = InputText("Adı: ");
-                string author = InputString("Müəllif: ");
-                int year = InputInt("Nəşr ili: ");
-                if (year < 0 || year > DateTime.Now.Year)
-                    throw new Exception("Nəşr ili düzgün deyil!");
-
-                Console.WriteLine("\n📂 Mövcud kateqoriyalar:");
-                var categories = categoryManager.GetAllCategories();
-
-                if (categories.Any())
+                try
                 {
-                    foreach (var cat in categories)
+                    Console.Clear();
+                    ConsoleHelper.Header("Yeni Kitab");
+
+                    string title = InputText("Adı: ");
+                    string author = InputString("Müəllif: ");
+
+                    int year;
+                    while (true)
                     {
-                        Console.WriteLine($"  {cat.Id}. {cat.Name}");
+                        year = InputInt("Nəşr ili: ");
+                        if (year >= 0 && year <= DateTime.Now.Year)
+                            break;
+
+                        ConsoleHelper.Error("Nəşr ili gələcəkdə və ya mənfi ola bilməz!");
                     }
+
+                    Console.WriteLine("\n📂 Mövcud kateqoriyalar:");
+                    var categories = categoryManager.GetAllCategories();
+
+                    if (categories.Any())
+                    {
+                        foreach (var cat in categories)
+                        {
+                            Console.WriteLine($"  {cat.Id}. {cat.Name}");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("  Heç bir kateqoriya yoxdur.");
+                    }
+
+                    Console.Write("\nKateqoriya adı (yeni və ya mövcud): ");
+                    string? categoryName = Console.ReadLine();
+
+                    if (string.IsNullOrWhiteSpace(categoryName))
+                        categoryName = "Ümumi";
+
+                    int categoryId = categoryManager.GetOrCreateCategory(categoryName);
+
+                    string isbn = Validators.GenerateISBN();
+
+                    bookManager.CreateBook(new BookCreateDto
+                    {
+                        Title = title,
+                        Author = author,
+                        ISBN = isbn,
+                        PublishedDate = year,
+                        CategoryId = categoryId,
+                        IsAvailable = true
+                    });
+
+                    ConsoleHelper.Success("Kitab əlavə edildi");
+                    Console.WriteLine($"📖 ISBN: {isbn}");
+                    Console.WriteLine($"📂 Kateqoriya: {categoryName}");
+                    SaveBooksToTxt();
+
+                    ConsoleHelper.Pause();
+                    break;
                 }
-                else
+                catch (Exception ex)
                 {
-                    Console.WriteLine("  Heç bir kateqoriya yoxdur.");
+                    ConsoleHelper.Error($"Xəta: {ex.Message}");
+                    ConsoleHelper.Pause();
                 }
-
-                Console.Write("\nKateqoriya adı (yeni və ya mövcud): ");
-                string? categoryName = Console.ReadLine();
-
-                if (string.IsNullOrWhiteSpace(categoryName))
-                    categoryName = "Ümumi";
-
-                int categoryId = categoryManager.GetOrCreateCategory(categoryName);
-
-               
-                string isbn = Validators.GenerateISBN();
-
-                bookManager.CreateBook(new BookCreateDto
-                {
-                    Title = title,
-                    Author = author,
-                    ISBN = isbn,  
-                    PublishedDate = year,
-                    CategoryId = categoryId,
-                    IsAvailable = true
-                });
-
-                ConsoleHelper.Success($"Kitab əlavə edildi");
-                Console.WriteLine($"📖 ISBN: {isbn}");
-                Console.WriteLine($"📂 Kateqoriya: {categoryName}");
-                SaveBooksToTxt();
             }
-            catch (Exception ex)
-            {
-                ConsoleHelper.Error($"Xəta: {ex.Message}");
-            }
-            ConsoleHelper.Pause();
         }
+
+
 
         static void ShowBooks()
         {
@@ -194,7 +209,7 @@ namespace BMS.ConsoleUI
 
             var allBooks = bookManager.GetAllBooks();
 
-            
+
             var results = allBooks.Where(b =>
                 (string.IsNullOrEmpty(title) || Validators.ContainsIgnoreCase(b.Title ?? "", title)) &&
                 (string.IsNullOrEmpty(author) || Validators.ContainsIgnoreCase(b.Author ?? "", author))
@@ -229,7 +244,7 @@ namespace BMS.ConsoleUI
             try
             {
                 ConsoleHelper.Header("Kitab Güncəllə");
-                ShowBooks();  
+                ShowBooks();
                 int id = InputInt("Güncəllənəcək kitabın ID-si: ");
                 var book = bookManager.GetBookById(id);
 
@@ -243,7 +258,7 @@ namespace BMS.ConsoleUI
                 string title = InputText($"Adı ({book.Title}): ", true);
                 string author = InputString($"Müəllif ({book.Author}): ", true);
 
-               
+
                 Console.Write($"Nəşr ili ({book.PublishedDate}): ");
                 string? yearInput = Console.ReadLine();
                 int year = string.IsNullOrWhiteSpace(yearInput)
@@ -259,7 +274,7 @@ namespace BMS.ConsoleUI
                     Id = id,
                     Title = string.IsNullOrWhiteSpace(title) ? (book.Title ?? string.Empty) : title,
                     Author = string.IsNullOrWhiteSpace(author) ? (book.Author ?? string.Empty) : author,
-                    PublishedDate = year,  
+                    PublishedDate = year,
                     ISBN = book.ISBN ?? string.Empty,
                     CategoryId = book.CategoryId,
                     IsAvailable = isAvailable
@@ -280,11 +295,11 @@ namespace BMS.ConsoleUI
             try
             {
                 ConsoleHelper.Header("Kitab Sil");
-                ShowBooks();   
+                ShowBooks();
                 int id = InputInt("Silinəcək kitabın ID-si: ");
                 var book = bookManager.GetBookById(id);
 
-                if (book == null)  
+                if (book == null)
                 {
                     ConsoleHelper.Error("Kitab tapılmadı!");
                     ConsoleHelper.Pause();
@@ -322,7 +337,7 @@ namespace BMS.ConsoleUI
             ConsoleHelper.MenuItem("3", "Kateqoriya axtar");
             ConsoleHelper.MenuItem("4", "Kateqoriya güncəllə");
             ConsoleHelper.MenuItem("5", "Kateqoriya sil");
-            ConsoleHelper.MenuItem("6", "Kateqoriya və kitabları göstər"); 
+            ConsoleHelper.MenuItem("6", "Kateqoriya və kitabları göstər");
             ConsoleHelper.MenuItem("0", "Geri");
             Console.Write("Seçim: ");
             string? choice = Console.ReadLine();
@@ -334,20 +349,20 @@ namespace BMS.ConsoleUI
                 case "3": SearchCategoriesUI(); break;
                 case "4": UpdateCategoryUI(); break;
                 case "5": DeleteCategoryUI(); break;
-                case "6": ShowCategoryWithBooks(); break;  
+                case "6": ShowCategoryWithBooks(); break;
                 case "0": break;
                 default: ConsoleHelper.Error("Yanlış seçim"); ConsoleHelper.Pause(); break;
             }
         }
 
-       
+
         static void ShowCategoryWithBooks()
         {
             try
             {
                 ConsoleHelper.Header("Kateqoriya və Kitabları");
 
-               
+
                 var categories = categoryManager.GetAllCategories();
 
                 if (!categories.Any())
@@ -402,13 +417,13 @@ namespace BMS.ConsoleUI
             try
             {
                 ConsoleHelper.Header("Yeni Kateqoriya");
-                
+
                 string name = InputText("Adı: ");
                 string desc = InputText("Təsviri: ");
 
                 categoryManager.CreateCategory(new CategoryCreateDto
                 {
-                 
+
                     Name = name,
                     Description = desc
                 });
@@ -440,7 +455,7 @@ namespace BMS.ConsoleUI
 
             ConsoleHelper.Pause();
         }
-        
+
 
         static void SearchCategoriesUI()
         {
@@ -463,6 +478,7 @@ namespace BMS.ConsoleUI
             try
             {
                 ConsoleHelper.Header("Kateqoriya Güncəllə");
+                ShowCategories();
                 int id = InputInt("Güncəllənəcək kateqoriya ID-si: ");
                 var category = categoryManager.GetCategoryById(id);
 
@@ -479,8 +495,8 @@ namespace BMS.ConsoleUI
                 categoryManager.UpdateCategory(new CategoryUpdateDto
                 {
                     Id = id,
-                    Name = string.IsNullOrWhiteSpace(name) ? (category.Name ?? string.Empty) : name, 
-                    Description = string.IsNullOrWhiteSpace(desc) ? (category.Description ?? string.Empty) : desc  
+                    Name = string.IsNullOrWhiteSpace(name) ? (category.Name ?? string.Empty) : name,
+                    Description = string.IsNullOrWhiteSpace(desc) ? (category.Description ?? string.Empty) : desc
                 });
 
                 ConsoleHelper.Success("Kateqoriya güncəlləndi");
@@ -543,7 +559,7 @@ namespace BMS.ConsoleUI
             try
             {
                 ConsoleHelper.Header("Yeni Üzv");
-             
+
                 string name = InputString("Ad, Soyad: ");
                 string email = InputEmail("Email: ");
                 string phone = InputPhone("Telefon: ");
@@ -561,7 +577,7 @@ namespace BMS.ConsoleUI
 
                 memberManager.CreateMember(new MemberCreateDto
                 {
-                  
+
                     FullName = name,
                     Email = email,
                     PhoneNumber = phone,
@@ -593,8 +609,8 @@ namespace BMS.ConsoleUI
             }
             else
             {
-                Console.WriteLine($"\n{"ID",-5} {"Ad, Soyad",-30} {"Email",-35} {"Telefon",-20} {"Status",-10}");
-                Console.WriteLine(new string('─', 105));
+                Console.WriteLine($"\n{"ID",-5} {"Ad, Soyad",-30} {"Email",-35} {"Telefon",-20} {"Üzvlük tarixi",-16} {"Status",-10}");
+                Console.WriteLine(new string('─', 120));
 
                 foreach (var m in members)
                 {
@@ -605,6 +621,7 @@ namespace BMS.ConsoleUI
                         $"{(m.FullName ?? "N/A").Substring(0, Math.Min(29, m.FullName?.Length ?? 0)),-30} " +
                         $"{(m.Email ?? "N/A").Substring(0, Math.Min(34, m.Email?.Length ?? 0)),-35} " +
                         $"{(m.PhoneNumber ?? "N/A"),-20} " +
+                        $"{m.MembershipDate.ToString("yyyy-MM-dd"),-16} " +
                         $"{status,-10}"
                     );
                 }
@@ -625,7 +642,7 @@ namespace BMS.ConsoleUI
 
             var allMembers = memberManager.GetAllMembers();
 
-          
+
             var results = allMembers.Where(m =>
                 (string.IsNullOrEmpty(name) || Validators.ContainsIgnoreCase(m.FullName ?? "", name)) &&
                 (string.IsNullOrEmpty(email) || Validators.ContainsIgnoreCase(m.Email ?? "", email))
@@ -690,9 +707,9 @@ namespace BMS.ConsoleUI
                 memberManager.UpdateMember(new MemberUpdateDto
                 {
                     Id = id,
-                    FullName = string.IsNullOrWhiteSpace(name) ? (member.FullName ?? string.Empty) : name,  
-                    Email = string.IsNullOrWhiteSpace(email) ? (member.Email ?? string.Empty) : email,  
-                    PhoneNumber = string.IsNullOrWhiteSpace(phone) ? (member.PhoneNumber ?? string.Empty) : phone,  
+                    FullName = string.IsNullOrWhiteSpace(name) ? (member.FullName ?? string.Empty) : name,
+                    Email = string.IsNullOrWhiteSpace(email) ? (member.Email ?? string.Empty) : email,
+                    PhoneNumber = string.IsNullOrWhiteSpace(phone) ? (member.PhoneNumber ?? string.Empty) : phone,
                     IsActive = isActive,
                     MembershipDate = member.MembershipDate,
                     BorrowedBookId = newBookId
@@ -770,7 +787,7 @@ namespace BMS.ConsoleUI
                     continue;
                 }
 
-                
+
                 if (val.All(c => char.IsLetter(c) || c == ' ' || c == '-' || c == '\'' || c == '.'))
                     return val.Trim();
 
@@ -778,7 +795,7 @@ namespace BMS.ConsoleUI
             }
         }
 
-       
+
         static string InputText(string prompt, bool allowEmpty = false)
         {
             while (true)
@@ -795,7 +812,7 @@ namespace BMS.ConsoleUI
                     continue;
                 }
 
-               
+
                 if (val.All(c => char.IsLetterOrDigit(c) || c == ' ' || c == '-' || c == '\'' || c == '.' || c == ',' || c == ':'))
                     return val.Trim();
 
@@ -858,9 +875,233 @@ namespace BMS.ConsoleUI
 
         static void LoadData()
         {
-            BMSDataBase.Books = FileStorage.LoadBooks("Books.txt");
-            BMSDataBase.Categories = FileStorage.LoadCategories("Categories.txt");
-            BMSDataBase.Members = FileStorage.LoadMembers("Members.txt");
+           
+            string baseFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "BMS Info");
+            string booksPath = Path.Combine(baseFolder, "Books.txt");
+            string categoriesPath = Path.Combine(baseFolder, "Categories.txt");
+            string membersPath = Path.Combine(baseFolder, "Members.txt");
+
+            BMSDataBase.Categories = File.Exists(categoriesPath)
+                ? FileStorage.LoadCategories("Categories.txt")
+                : new List<Category>();
+
+            BMSDataBase.Books = File.Exists(booksPath)
+                ? FileStorage.LoadBooks("Books.txt")
+                : new List<Book>();
+
+            BMSDataBase.Members = File.Exists(membersPath)
+                ? FileStorage.LoadMembers("Members.txt")
+                : new List<Member>();
+
+            bool isSeeded = false;
+
+            if (BMSDataBase.Categories.Count == 0)
+            {
+                SeedCategories();
+                isSeeded = true;
+            }
+
+            if (BMSDataBase.Books.Count == 0)
+            {
+                SeedBooks();
+                isSeeded = true;
+            }
+
+            if (BMSDataBase.Members.Count == 0)
+            {
+                SeedMembers();
+                isSeeded = true;
+            }
+
+            if (isSeeded)
+            {
+                SaveData();
+                ConsoleHelper.Success("✔ Məlumatlar TXT fayllara yazıldı");
+            }
+            else
+            {
+               
+                 
+            }
+        }
+
+
+        static void SeedCategories()
+        {
+            var categories = new List<Category>
+    {
+        new Category { Id = 1, Name = "Bədii ədəbiyyat", Description = "Romanlar, povest və hekayələr" },
+        new Category { Id = 2, Name = "Elmi-kütləvi", Description = "Elmi və texniki kitablar" },
+        new Category { Id = 3, Name = "Psixologiya", Description = "Psixologiya və özünü inkişaf" },
+        new Category { Id = 4, Name = "Biznes", Description = "Biznes və idarəetmə" },
+        new Category { Id = 5, Name = "Tarixi", Description = "Tarixi kitablar və xatirələr" },
+        new Category { Id = 6, Name = "Uşaq ədəbiyyatı", Description = "Uşaqlar üçün nağıllar və əhvalat" },
+        new Category { Id = 7, Name = "Fəlsəfə", Description = "Fəlsəfi əsərlər" },
+        new Category { Id = 8, Name = "Texnologiya", Description = "Proqramlaşdırma və IT" }
+    };
+
+            BMSDataBase.Categories = categories;
+            ConsoleHelper.Success($"✓ {categories.Count} kateqoriya yükləndi");
+        }
+
+        static void SeedBooks()
+        {
+            var books = new List<Book>
+    {
+
+        new Book { Id = 1, Title = "Koroğlu", Author = "Xalq dastanı", ISBN = "978-9-95-233001-1", PublishedDate = new DateTime(2015, 1, 1), CategoryId = 1, IsAvailable = true },
+        new Book { Id = 2, Title = "Arşın mal alan", Author = "Üzeyir Hacıbəyov", ISBN = "978-9-95-233002-8", PublishedDate = new DateTime(2012, 1, 1), CategoryId = 1, IsAvailable = true },
+        new Book { Id = 3, Title = "Ali və Nino", Author = "Qurban Səid", ISBN = "978-9-95-233003-5", PublishedDate = new DateTime(2018, 1, 1), CategoryId = 1, IsAvailable = true },
+        new Book { Id = 4, Title = "Qanon", Author = "Əbdürrəhim bəy Haqverdiyev", ISBN = "978-9-95-233004-2", PublishedDate = new DateTime(2010, 1, 1), CategoryId = 1, IsAvailable = false },
+        new Book { Id = 5, Title = "Dədə Qorqud", Author = "Xalq dastanı", ISBN = "978-9-95-233005-9", PublishedDate = new DateTime(2016, 1, 1), CategoryId = 1, IsAvailable = true },
+
+
+        new Book { Id = 6, Title = "Kainatın tarixi", Author = "Stephen Hawking", ISBN = "978-0-55-338016-3", PublishedDate = new DateTime(2020, 1, 1), CategoryId = 2, IsAvailable = true },
+        new Book { Id = 7, Title = "Sapiens", Author = "Yuval Noah Harari", ISBN = "978-0-09-959008-8", PublishedDate = new DateTime(2019, 1, 1), CategoryId = 2, IsAvailable = true },
+        new Book { Id = 8, Title = "Homo Deus", Author = "Yuval Noah Harari", ISBN = "978-1-78-470400-6", PublishedDate = new DateTime(2021, 1, 1), CategoryId = 2, IsAvailable = false },
+
+
+        new Book { Id = 9, Title = "Düşünün və zəngin olun", Author = "Napoleon Hill", ISBN = "978-1-58-542433-7", PublishedDate = new DateTime(2017, 1, 1), CategoryId = 3, IsAvailable = true },
+        new Book { Id = 10, Title = "Emosional intellekt", Author = "Daniel Goleman", ISBN = "978-0-55-338371-3", PublishedDate = new DateTime(2018, 1, 1), CategoryId = 3, IsAvailable = true },
+        new Book { Id = 11, Title = "Psixologiya ensiklopediyası", Author = "Elmi kollektiv", ISBN = "978-9-95-233011-0", PublishedDate = new DateTime(2019, 1, 1), CategoryId = 3, IsAvailable = true },
+
+
+        new Book { Id = 12, Title = "Zəngin ata, kasıb ata", Author = "Robert Kiyosaki", ISBN = "978-1-61-268011-4", PublishedDate = new DateTime(2020, 1, 1), CategoryId = 4, IsAvailable = true },
+        new Book { Id = 13, Title = "0-dan 1-ə", Author = "Peter Thiel", ISBN = "978-0-80-413929-7", PublishedDate = new DateTime(2021, 1, 1), CategoryId = 4, IsAvailable = false },
+        new Book { Id = 14, Title = "Startap", Author = "Eric Ries", ISBN = "978-0-30-788791-7", PublishedDate = new DateTime(2019, 1, 1), CategoryId = 4, IsAvailable = true },
+
+
+        new Book { Id = 15, Title = "Azərbaycan tarixi", Author = "Ziya Bünyadov", ISBN = "978-9-95-233015-8", PublishedDate = new DateTime(2014, 1, 1), CategoryId = 5, IsAvailable = true },
+        new Book { Id = 16, Title = "Qarабağ tarixi", Author = "Mirza Jamal Javanshir", ISBN = "978-9-95-233016-5", PublishedDate = new DateTime(2013, 1, 1), CategoryId = 5, IsAvailable = true },
+
+
+        new Book { Id = 17, Title = "Kiçik Şahzadə", Author = "Antoine de Saint-Exupéry", ISBN = "978-0-15-602501-8", PublishedDate = new DateTime(2015, 1, 1), CategoryId = 6, IsAvailable = true },
+        new Book { Id = 18, Title = "Cırtdan", Author = "Səməd Vurğun", ISBN = "978-9-95-233018-9", PublishedDate = new DateTime(2011, 1, 1), CategoryId = 6, IsAvailable = true },
+        new Book { Id = 19, Title = "Harry Potter", Author = "J.K. Rowling", ISBN = "978-0-74-754615-3", PublishedDate = new DateTime(2020, 1, 1), CategoryId = 6, IsAvailable = false },
+
+
+        new Book { Id = 20, Title = "Meditations", Author = "Marcus Aurelius", ISBN = "978-0-14-044933-1", PublishedDate = new DateTime(2016, 1, 1), CategoryId = 7, IsAvailable = true },
+        new Book { Id = 21, Title = "İnsan niyə yaşayır", Author = "Lev Tolstoy", ISBN = "978-5-17-098652-3", PublishedDate = new DateTime(2017, 1, 1), CategoryId = 7, IsAvailable = true },
+
+
+        new Book { Id = 22, Title = "Clean Code", Author = "Robert C. Martin", ISBN = "978-0-13-235088-4", PublishedDate = new DateTime(2022, 1, 1), CategoryId = 8, IsAvailable = true },
+        new Book { Id = 23, Title = "C# 12 və .NET 8", Author = "Mark J. Price", ISBN = "978-1-80-323767-2", PublishedDate = new DateTime(2023, 1, 1), CategoryId = 8, IsAvailable = true },
+        new Book { Id = 24, Title = "Design Patterns", Author = "Gang of Four", ISBN = "978-0-20-163361-0", PublishedDate = new DateTime(2021, 1, 1), CategoryId = 8, IsAvailable = true },
+        new Book { Id = 25, Title = "Python proqramlaşdırma", Author = "Eric Matthes", ISBN = "978-1-59-327928-8", PublishedDate = new DateTime(2022, 1, 1), CategoryId = 8, IsAvailable = false }
+    };
+
+            BMSDataBase.Books = books;
+            ConsoleHelper.Success($"✓ {books.Count} kitab yükləndi");
+        }
+
+        static void SeedMembers()
+        {
+            var members = new List<Member>
+    {
+        new Member
+        {
+            Id = 1,
+            FullName = "Əli Məmmədov",
+            Email = "ali.mammadov@mail.az",
+            PhoneNumber = "+994 50 123 45 67",
+            MembershipDate = new DateTime(2023, 1, 15),
+            IsActive = false,
+            BorrowedBookId = 4
+        },
+        new Member
+        {
+            Id = 2,
+            FullName = "Aynur Həsənova",
+            Email = "aynur.hasanli@gmail.com",
+            PhoneNumber = "+994 51 234 56 78",
+            MembershipDate = new DateTime(2023, 3, 20),
+            IsActive = true,
+            BorrowedBookId = null
+        },
+        new Member
+        {
+            Id = 3,
+            FullName = "Rəşad Quliyev",
+            Email = "rashad.guliyev@yahoo.com",
+            PhoneNumber = "+994 55 345 67 89",
+            MembershipDate = new DateTime(2023, 5, 10),
+            IsActive = false,
+            BorrowedBookId = 8
+        },
+        new Member
+        {
+            Id = 4,
+            FullName = "Səbinə Əliyeva",
+            Email = "sabina.aliyeva@inbox.ru",
+            PhoneNumber = "+994 70 456 78 90",
+            MembershipDate = new DateTime(2023, 7, 5),
+            IsActive = true,
+            BorrowedBookId = null
+        },
+        new Member
+        {
+            Id = 5,
+            FullName = "Orxan Nəbiyev",
+            Email = "orkhan.nabiyev@hotmail.com",
+            PhoneNumber = "+994 77 567 89 01",
+            MembershipDate = new DateTime(2023, 9, 12),
+            IsActive = false,
+            BorrowedBookId = 13
+        },
+        new Member
+        {
+            Id = 6,
+            FullName = "Günel İbrahimova",
+            Email = "gunel.ibrahimova@bk.ru",
+            PhoneNumber = "+994 99 678 90 12",
+            MembershipDate = new DateTime(2023, 11, 25),
+            IsActive = true,
+            BorrowedBookId = null
+        },
+        new Member
+        {
+            Id = 7,
+            FullName = "Turan Məmmədov",
+            Email = "turan.mammadov@edu.az",
+            PhoneNumber = "+994 50 789 01 23",
+            MembershipDate = new DateTime(2024, 1, 8),
+            IsActive = false,
+            BorrowedBookId = 19
+        },
+        new Member
+        {
+            Id = 8,
+            FullName = "Leyla Mustafayeva",
+            Email = "leyla.mustafayeva@mail.ru",
+            PhoneNumber = "+994 51 890 12 34",
+            MembershipDate = new DateTime(2024, 2, 14),
+            IsActive = true,
+            BorrowedBookId = null
+        },
+        new Member
+        {
+            Id = 9,
+            FullName = "Elvin Həsənov",
+            Email = "elvin.hasanov@code.az",
+            PhoneNumber = "+994 55 901 23 45",
+            MembershipDate = new DateTime(2024, 4, 22),
+            IsActive = false,
+            BorrowedBookId = 25
+        },
+        new Member
+        {
+            Id = 10,
+            FullName = "Nigar Əhmədova",
+            Email = "nigar.ahmadova@unec.edu.az",
+            PhoneNumber = "+994 70 012 34 56",
+            MembershipDate = new DateTime(2024, 6, 30),
+            IsActive = true,
+            BorrowedBookId = null
+        }
+            };
+
+            BMSDataBase.Members = members;
+            ConsoleHelper.Success($"✓ {members.Count} üzv yükləndi");
         }
 
         static void SaveData()

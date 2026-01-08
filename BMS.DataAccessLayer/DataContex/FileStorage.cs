@@ -194,7 +194,7 @@ namespace BMS.DataAccessLayer.DataContex
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Ошибка: {ex.Message}");
+                    Console.WriteLine($"Error: {ex.Message}");
                 }
             }
 
