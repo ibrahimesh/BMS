@@ -98,6 +98,7 @@ namespace BMS.ConsoleUI
 
                     string title = InputText("Adı: ");
                     string author = InputString("Müəllif: ");
+                    
 
                     int year;
                     while (true)
@@ -124,13 +125,27 @@ namespace BMS.ConsoleUI
                         Console.WriteLine("  Heç bir kateqoriya yoxdur.");
                     }
 
-                    Console.Write("\nKateqoriya adı (yeni və ya mövcud): ");
-                    string? categoryName = Console.ReadLine();
+                    Console.Write("\nKateqoriya ID-si və ya yeni ad yazın: ");
+                    string? input = Console.ReadLine();
 
-                    if (string.IsNullOrWhiteSpace(categoryName))
-                        categoryName = "Ümumi";
+                    int categoryId;
 
-                    int categoryId = categoryManager.GetOrCreateCategory(categoryName);
+                    if (int.TryParse(input, out int parsedId))
+                    {
+                        var category = categoryManager.GetCategoryById(parsedId);
+                        if (category == null)
+                            throw new Exception("Belə kateqoriya ID-si yoxdur!");
+
+                        categoryId = parsedId;
+                    }
+                    else
+                    {
+                        if (string.IsNullOrWhiteSpace(input))
+                            input = "Ümumi";
+
+                        categoryId = categoryManager.GetOrCreateCategory(input);
+                    }
+
 
                     string isbn = Validators.GenerateISBN();
 
@@ -146,7 +161,11 @@ namespace BMS.ConsoleUI
 
                     ConsoleHelper.Success("Kitab əlavə edildi");
                     Console.WriteLine($"📖 ISBN: {isbn}");
-                    Console.WriteLine($"📂 Kateqoriya: {categoryName}");
+                    var selectedCategory = categoryManager.GetCategoryById(categoryId);
+                    string categoryDisplayName = selectedCategory?.Name ?? "N/A";
+
+                    Console.WriteLine($"📂 Kateqoriya: {categoryDisplayName}");
+
                     SaveBooksToTxt();
 
                     ConsoleHelper.Pause();
@@ -268,6 +287,32 @@ namespace BMS.ConsoleUI
                 Console.Write("Kitab mövcuddur? (1 - Bəli, 0 - Xeyr): ");
                 string? availableInput = Console.ReadLine();
                 bool isAvailable = availableInput == "1";
+               
+                Console.Write("Yeni kateqoriya ID-si və ya ad (boş burax – dəyişmə): ");
+                ShowCategories();
+                string? input = Console.ReadLine();
+
+                if (!string.IsNullOrWhiteSpace(input))
+                {
+                    int newCategoryId;
+
+                    if (int.TryParse(input, out int parsedId))
+                    {
+                        var category = categoryManager.GetCategoryById(parsedId);
+                        if (category == null)
+                            throw new Exception("Belə kateqoriya ID-si yoxdur!");
+
+                        newCategoryId = parsedId;
+                    }
+                    else
+                    {
+                        newCategoryId = categoryManager.GetOrCreateCategory(input);
+                    }
+
+                    book.CategoryId = newCategoryId;
+                }
+               
+
 
                 bookManager.UpdateBook(new BookUpdateDto
                 {
@@ -514,6 +559,7 @@ namespace BMS.ConsoleUI
             try
             {
                 ConsoleHelper.Header("Kateqoriya Sil");
+                ShowCategories();
                 int id = InputInt("Silinəcək kateqoriya ID-si: ");
                 categoryManager.DeleteCategory(id);
                 ConsoleHelper.Success("Kateqoriya silindi");
@@ -621,7 +667,7 @@ namespace BMS.ConsoleUI
                         $"{(m.FullName ?? "N/A").Substring(0, Math.Min(29, m.FullName?.Length ?? 0)),-30} " +
                         $"{(m.Email ?? "N/A").Substring(0, Math.Min(34, m.Email?.Length ?? 0)),-35} " +
                         $"{(m.PhoneNumber ?? "N/A"),-20} " +
-                        $"{m.MembershipDate.ToString("yyyy-MM-dd"),-16} " +
+                        $"{m.MembershipDate.ToString("dd.MM.yyyy"),-16} " +
                         $"{status,-10}"
                     );
                 }
@@ -655,16 +701,17 @@ namespace BMS.ConsoleUI
             else
             {
                 Console.WriteLine($"\n✓ {results.Count} nəticə tapıldı:\n");
-                Console.WriteLine($"{"ID",-5} {"Ad, Soyad",-30} {"Email",-35} {"Telefon",-20}");
-                Console.WriteLine(new string('─', 95));
+                Console.WriteLine($"{"ID",-5} {"Ad, Soyad",-30} {"Email",-35} {"Telefon",-20} {"Üzvlük tarixi",-12}");
+                Console.WriteLine(new string('─', 110));
 
                 foreach (var m in results)
                 {
                     Console.WriteLine(
-                        $"{m.Id,-5} " +
-                        $"{(m.FullName ?? "N/A"),-30} " +
-                        $"{(m.Email ?? "N/A"),-35} " +
-                        $"{(m.PhoneNumber ?? "N/A"),-20}"
+                            $"{m.Id,-5} " +
+                            $"{(m.FullName ?? "N/A"),-30} " +
+                            $"{(m.Email ?? "N/A"),-35} " +
+                            $"{(m.PhoneNumber ?? "N/A"),-20} " +
+                            $"{m.MembershipDate.ToString("dd.MM.yyyy"),-12}"
                     );
                 }
             }

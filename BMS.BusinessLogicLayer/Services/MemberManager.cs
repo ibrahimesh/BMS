@@ -16,6 +16,10 @@ namespace BMS.BusinessLogicLayer.Services
         {
             if (dto == null)
                 throw new ArgumentNullException(nameof(dto));
+            var nameRegex = new System.Text.RegularExpressions.Regex(@"^[a-zA-ZƏəİiÖöĞğŞşÇç\s]{3,30}$");
+
+            if (!nameRegex.IsMatch(dto.FullName))
+                throw new Exception("Ad və Soyad ən azı 3 hərfdən ibarət olmalı və düzgün yazılmalıdır.");
 
             if (string.IsNullOrWhiteSpace(dto.FullName))
                 throw new Exception("Ad boş ola bilməz");

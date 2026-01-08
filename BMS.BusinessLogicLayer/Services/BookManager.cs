@@ -26,9 +26,15 @@ namespace BMS.BusinessLogicLayer.Services
         {
             if (dto == null)
                 throw new ArgumentNullException(nameof(dto));
+            if (dto.Title.Trim().Length < 2)
+                throw new Exception("Kitab adı çox qısadır (min. 2 simvol).");
 
             if (string.IsNullOrWhiteSpace(dto.Title))
                 throw new Exception("Kitabın adı boş ola bilməz");
+
+            if (dto.Author.Trim().Length < 3)
+                throw new Exception("Müəllif adı ən azı 3 hərfdən ibarət olmalıdır.");
+
 
             if (string.IsNullOrWhiteSpace(dto.Author))
                 throw new Exception("Müəllif adı boş ola bilməz");
