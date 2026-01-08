@@ -19,11 +19,11 @@ namespace BMS.DataAccessLayer.DataContex
             return Path.Combine(BaseFolder, fileName);
         }
 
-       
+
 
         public static void SaveBooks(string fileName, List<Book> books)
         {
-            string path = GetPath(fileName);  
+            string path = GetPath(fileName);
 
             using StreamWriter sw = new(path, false, Encoding.UTF8);
 
@@ -44,7 +44,7 @@ namespace BMS.DataAccessLayer.DataContex
 
         public static List<Book> LoadBooks(string fileName)
         {
-            string path = GetPath(fileName); 
+            string path = GetPath(fileName);
 
             if (!File.Exists(path))
                 return new List<Book>();
@@ -85,11 +85,11 @@ namespace BMS.DataAccessLayer.DataContex
             return books;
         }
 
-       
+
 
         public static void SaveCategories(string fileName, List<Category> categories)
         {
-            string path = GetPath(fileName);  
+            string path = GetPath(fileName);
 
             using StreamWriter sw = new(path, false, Encoding.UTF8);
 
@@ -147,19 +147,23 @@ namespace BMS.DataAccessLayer.DataContex
 
             foreach (var m in members)
             {
-                string borrowedBookStr = m.BorrowedBookId.HasValue ? m.BorrowedBookId.Value.ToString("D5") : "".PadRight(5);
+                string borrowedBookStr = m.BorrowedBookId.HasValue
+                    ? m.BorrowedBookId.Value.ToString("D5")
+                    : "".PadRight(5);
+
                 string line =
                     m.Id.ToString("D5") + "|" +
                     m.FullName.PadRight(30).Substring(0, 30) + "|" +
                     m.Email.PadRight(30).Substring(0, 30) + "|" +
                     m.PhoneNumber.PadRight(15).Substring(0, 15) + "|" +
                     (m.IsActive ? "Active" : "Not Active").PadRight(11) + "|" +
-                    m.MembershipDate.Year.ToString("D4") + "|" +
+                    m.MembershipDate.ToString("yyyy.MM.dd") + "|" +
                     borrowedBookStr;
 
                 sw.WriteLine(line);
             }
         }
+
 
         public static List<Member> LoadMembers(string fileName)
         {
@@ -181,6 +185,13 @@ namespace BMS.DataAccessLayer.DataContex
                     if (int.TryParse(parts[6].Trim(), out var parsed))
                         borrowedId = parsed;
 
+                  
+                    DateTime membershipDate = DateTime.ParseExact(
+                        parts[5].Trim(),
+                        "yyyy.MM.dd",
+                        System.Globalization.CultureInfo.InvariantCulture
+                    );
+
                     members.Add(new Member
                     {
                         Id = int.Parse(parts[0].Trim()),
@@ -188,18 +199,20 @@ namespace BMS.DataAccessLayer.DataContex
                         Email = parts[2].Trim(),
                         PhoneNumber = parts[3].Trim(),
                         IsActive = parts[4].Trim() == "Active",
-                        MembershipDate = new DateTime(int.Parse(parts[5].Trim()), 1, 1),
+                        MembershipDate = membershipDate,
                         BorrowedBookId = borrowedId
                     });
                 }
-                catch (Exception ex)
+                catch
                 {
-                    Console.WriteLine($"Error: {ex.Message}");
+                   
                 }
             }
 
             return members;
         }
+
+
 
     }
 }

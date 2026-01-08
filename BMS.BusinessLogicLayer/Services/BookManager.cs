@@ -26,9 +26,15 @@ namespace BMS.BusinessLogicLayer.Services
         {
             if (dto == null)
                 throw new ArgumentNullException(nameof(dto));
+            if (dto.Title.Trim().Length < 2)
+                throw new Exception("Kitab adı çox qısadır (min. 2 simvol).");
 
             if (string.IsNullOrWhiteSpace(dto.Title))
                 throw new Exception("Kitabın adı boş ola bilməz");
+
+            if (dto.Author.Trim().Length < 3)
+                throw new Exception("Müəllif adı ən azı 3 hərfdən ibarət olmalıdır.");
+
 
             if (string.IsNullOrWhiteSpace(dto.Author))
                 throw new Exception("Müəllif adı boş ola bilməz");
@@ -39,14 +45,14 @@ namespace BMS.BusinessLogicLayer.Services
             if (BMSDataBase.Books.Any(b => b.ISBN == dto.ISBN))
                 throw new Exception("Bu ISBN artıq mövcuddur");
 
-           
+
             int newId = BMSDataBase.Books.Count == 0
                 ? 1
                 : BMSDataBase.Books.Max(b => b.Id) + 1;
 
             Book book = new Book
             {
-                Id = newId,  
+                Id = newId,
                 Title = dto.Title.Trim(),
                 Author = dto.Author.Trim(),
                 ISBN = dto.ISBN.Trim(),
@@ -74,8 +80,8 @@ namespace BMS.BusinessLogicLayer.Services
             }
         }
 
-        
-       
+
+
 
 
         public List<BookDto> GetAllBooks()
@@ -107,7 +113,7 @@ namespace BMS.BusinessLogicLayer.Services
                     IsAvailable = b.IsAvailable
                 }).ToList();
         }
-        
+
 
 
 
@@ -133,7 +139,7 @@ namespace BMS.BusinessLogicLayer.Services
                 throw new Exception("Book not found");
 
             }
-                
+
 
         }
 
@@ -191,7 +197,7 @@ namespace BMS.BusinessLogicLayer.Services
 
         public void UpdateBook(BookUpdateDto dto)
         {
-            Book? book = BMSDataBase.Books.FirstOrDefault(b => b.Id == dto.Id);  
+            Book? book = BMSDataBase.Books.FirstOrDefault(b => b.Id == dto.Id);
 
             if (book == null)
                 throw new Exception("Kitab tapılmadı");
@@ -216,7 +222,7 @@ namespace BMS.BusinessLogicLayer.Services
         public static string GenerateIsbn()
         {
             return Random.Shared.Next(1000000000, 1999999999).ToString() +
-                   Random.Shared.Next(1000, 9999).ToString(); 
+                   Random.Shared.Next(1000, 9999).ToString();
         }
 
         public BookAuthorInfoDto GetAuthorInfo(string keyword)

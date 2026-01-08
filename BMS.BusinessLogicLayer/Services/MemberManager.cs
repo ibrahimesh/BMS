@@ -16,6 +16,10 @@ namespace BMS.BusinessLogicLayer.Services
         {
             if (dto == null)
                 throw new ArgumentNullException(nameof(dto));
+            var nameRegex = new System.Text.RegularExpressions.Regex(@"^[a-zA-ZƏəİiÖöĞğŞşÇç\s]{3,30}$");
+
+            if (!nameRegex.IsMatch(dto.FullName))
+                throw new Exception("Ad və Soyad ən azı 3 hərfdən ibarət olmalı və düzgün yazılmalıdır.");
 
             if (string.IsNullOrWhiteSpace(dto.FullName))
                 throw new Exception("Ad boş ola bilməz");
@@ -42,10 +46,10 @@ namespace BMS.BusinessLogicLayer.Services
                 PhoneNumber = dto.PhoneNumber,
                 IsActive = dto.IsActive,
                 MembershipDate = DateTime.Now
-                
+
             };
 
-            
+
             if (dto.BorrowedBookId.HasValue)
             {
                 var book = BMSDataBase.Books
@@ -57,7 +61,7 @@ namespace BMS.BusinessLogicLayer.Services
                 if (!book.IsAvailable)
                     throw new Exception("Kitab artıq götürülüb");
 
-                book.IsAvailable = false;   
+                book.IsAvailable = false;
                 member.IsActive = false;
                 member.BorrowedBookId = book.Id;
             }
@@ -125,7 +129,7 @@ namespace BMS.BusinessLogicLayer.Services
         {
             var query = BMSDataBase.Members.AsQueryable();
 
-           
+
             if (!string.IsNullOrWhiteSpace(memberSearchDto.FullName))
             {
                 query = query.Where(m => m.FullName.Contains(memberSearchDto.FullName, StringComparison.OrdinalIgnoreCase));
@@ -185,48 +189,48 @@ namespace BMS.BusinessLogicLayer.Services
             if (!string.IsNullOrWhiteSpace(memberUpdateDto.FullName))
                 member.FullName = memberUpdateDto.FullName.Trim();
 
-            
+
             if (memberUpdateDto.BorrowedBookId.HasValue)
             {
                 var book = BMSDataBase.Books.FirstOrDefault(b => b.Id == memberUpdateDto.BorrowedBookId.Value);
                 if (book == null)
                     throw new Exception("Seçilən kitab tapılmadı");
 
-                
+
                 book.IsAvailable = false;
                 member.IsActive = false;
                 member.BorrowedBookId = book.Id;
             }
             else
             {
-                
+
                 member.IsActive = memberUpdateDto.IsActive;
             }
         }
-       
 
 
 
-    
-        
-        
-            public List<MemberDto> GetAllMembersWithBooks()
+
+
+
+
+        public List<MemberDto> GetAllMembersWithBooks()
+        {
+            return BMSDataBase.Members.Select(m => new MemberDto
             {
-                return BMSDataBase.Members.Select(m => new MemberDto
-                {
-                    Id = m.Id,
-                    FullName = m.FullName,
-                    Email = m.Email,
-                    PhoneNumber = m.PhoneNumber,
-                    IsActive = m.IsActive,
-                    MembershipDate = m.MembershipDate,
-                    BorrowedBookId = m.BorrowedBookId,
-                  
-                    BookTitle = m.BorrowedBookId.HasValue
-                        ? BMSDataBase.Books.FirstOrDefault(b => b.Id == m.BorrowedBookId)?.Title
-                        : "Kitab seçilməyib"
-                }).ToList();
-            }
+                Id = m.Id,
+                FullName = m.FullName,
+                Email = m.Email,
+                PhoneNumber = m.PhoneNumber,
+                IsActive = m.IsActive,
+                MembershipDate = m.MembershipDate,
+                BorrowedBookId = m.BorrowedBookId,
+
+                BookTitle = m.BorrowedBookId.HasValue
+                    ? BMSDataBase.Books.FirstOrDefault(b => b.Id == m.BorrowedBookId)?.Title
+                    : "Kitab seçilməyib"
+            }).ToList();
+        }
 
 
 
